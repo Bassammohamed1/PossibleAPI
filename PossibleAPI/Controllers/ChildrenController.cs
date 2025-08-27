@@ -1,5 +1,4 @@
-﻿using Azure;
-using GP_API.Models;
+﻿using GP_API.Models;
 using GP_API.Models.DTOs;
 using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -7,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace GP_API.Controllers
 {
@@ -14,30 +14,31 @@ namespace GP_API.Controllers
     [ApiController]
     public class ChildrenController : ControllerBase
     {
-        private readonly IChildsService childrenService;
-        private readonly UserManager<AppUser> userManager;
-        private readonly IWebHostEnvironment _environment;
-        public ChildrenController(IChildsService childrenService, UserManager<AppUser> userManager, IWebHostEnvironment environment)
+        private readonly IChildrenService _childrenService;
+        private readonly UserManager<AppUser> _userManager;
+
+        public ChildrenController(IChildrenService childrenService, UserManager<AppUser> userManager)
         {
-            this.childrenService = childrenService;
-            this.userManager = userManager;
-            _environment = environment;
+            _childrenService = childrenService;
+            _userManager = userManager;
         }
+
         [HttpGet("GetAllChildren")]
         [Authorize(Roles = "Specialist")]
-        public IActionResult GetAllChildren()
+        public async Task<IActionResult> GetAllChildren()
         {
-            var children = childrenService.GetAllChildren();
+            var children = await _childrenService.GetAllChildren();
             return Ok(children);
         }
+
         [HttpGet("GetChildById/{id}")]
         [Authorize(Roles = "User,Specialist")]
-        public IActionResult GetChildById(int id)
+        public async Task<IActionResult> GetChildById(int id)
         {
             if (id == 0 || id == null)
                 return BadRequest(new APIResponse { Message = "Invalid id.", StatusCode = 400 });
 
-            var child = childrenService.GetChildById(id);
+            var child = await _childrenService.GetChildById(id);
 
             if (child == null)
                 return NotFound(new APIResponse { Message = "Child not found.", StatusCode = 404 });
@@ -56,10 +57,10 @@ namespace GP_API.Controllers
                 WritingRate = child.WritingRate ?? 0,
                 ParentId = child.ParentId,
                 Gender = child.Gender,
-
                 Image = child.Image
             });
         }
+
         [HttpGet("GetUserChildren")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> GetUserChildren()
@@ -67,15 +68,15 @@ namespace GP_API.Controllers
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId))
-                return BadRequest(new APIResponse { Message = "Invalid token.", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "Invalid token.", StatusCode = 400 });
 
-            var user = await userManager.FindByIdAsync(userId);
+            var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
-                return BadRequest(new APIResponse { Message = "User not found.", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "User not found.", StatusCode = 400 });
 
-            var children = childrenService.GetChildrenByParentId(userId);
+            var children = await _childrenService.GetChildrenByParentId(userId);
             if (children == null)
-                return BadRequest(new APIResponse { Message = "Invalid id.", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "Invalid parent ID.", StatusCode = 400 });
 
             var data = new List<ChildViewDTO>();
 
@@ -101,161 +102,81 @@ namespace GP_API.Controllers
 
             return Ok(data);
         }
+
         [HttpPost("AddChild")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> AddChild([FromForm] ChildDTO data)
         {
             if (ModelState.IsValid)
             {
-                var parent = await userManager.FindByNameAsync(data.ParentUserName);
+                var result = await _childrenService.AddChild(data);
 
-                if (parent == null)
-                    return BadRequest(new APIResponse { Message = "Invalid parent name !!", StatusCode = 404 });
-
-                var webRootPath = _environment.WebRootPath;
-
-                if (data.ClientFile == null)
+                if (result.StatusCode == 200)
                 {
-                    return BadRequest(new APIResponse { Message = "Client file is missing", StatusCode = 404 });
+                    return Ok(result.Child);
                 }
-
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(data.ClientFile.FileName);
-                var filePath = Path.Combine(webRootPath, "files/uploads/images", fileName);
-
-                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-
-                try
-                {
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await data.ClientFile.CopyToAsync(stream);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, "Error saving file: " + ex.Message);
-                }
-
-                var Child = new Child()
-                {
-                    Name = data.Name,
-                    Age = data.Age,
-                    ParentId = parent.Id,
-                    Difficult = data.Difficult,
-                    Gender = data.Gender,
-                    Image = $"{Request.Scheme}://{Request.Host}/files/uploads/images/{fileName}"
-                };
-
-                childrenService.AddChild(Child);
-
-                var child = childrenService.GetChildById(Child.Id);
-
-                if (child != null)
-                    return Ok(new
-                    {
-                        Id = child.Id,
-                        Name = child.Name,
-                        Age = child.Age,
-                        Difficult = child.Difficult,
-                        ParentId = child.ParentId,
-                        Gender = child.Gender,
-                        Image = child.Image
-                    });
                 else
-                    return BadRequest(new APIResponse { Message = "An error occurred.", StatusCode = 404 });
+                {
+                    return BadRequest(new APIResponse { StatusCode = result.StatusCode, Message = result.Message });
+                }
             }
             return BadRequest(ModelState);
         }
+
         [HttpPut("UpdateChild/{id}")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> UpdateChild(int id, [FromForm] ChildDTO data)
         {
             if (ModelState.IsValid)
             {
-                var parent = await userManager.FindByNameAsync(data.ParentUserName);
-
-                if (parent == null)
-                    return BadRequest(new APIResponse { Message = "Invalid parent name !!", StatusCode = 404 });
-
-                var child = childrenService.GetChildById(id);
+                var child = await _childrenService.GetChildById(id);
 
                 if (child is null)
-                    return BadRequest(new APIResponse { Message = "Invalid id.", StatusCode = 404 });
+                    return BadRequest(new APIResponse { Message = "Invalid child ID.", StatusCode = 400 });
 
-                var webRootPath = _environment.WebRootPath;
+                var result = await _childrenService.UpdateChild(child, data);
 
-                if (data.ClientFile == null)
+                if (result.StatusCode == 200)
                 {
-                    return BadRequest(new APIResponse { Message = "Client file is missing", StatusCode = 404 });
+                    return Ok(result.Child);
                 }
-
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(data.ClientFile.FileName);
-                var filePath = Path.Combine(webRootPath, "files/uploads/images", fileName);
-
-                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-
-                try
+                else
                 {
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await data.ClientFile.CopyToAsync(stream);
-                    }
+                    return BadRequest(new APIResponse { StatusCode = result.StatusCode, Message = result.Message });
                 }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, "Error saving file: " + ex.Message);
-                }
-
-                child.Name = data.Name;
-                child.Age = data.Age;
-                child.Gender = data.Gender;
-                child.Difficult = data.Difficult;
-                child.ParentId = parent.Id;
-                child.Image = $"{Request.Scheme}://{Request.Host}/files/uploads/images/{fileName}";
-
-                childrenService.UpdateChild(child);
-
-                return Ok(new
-                {
-                    Id = child.Id,
-                    Name = child.Name,
-                    Age = child.Age,
-                    Difficult = child.Difficult,
-                    ParentId = child.ParentId,
-                    Gender = child.Gender,
-                    Image = child.Image
-                });
             }
             return BadRequest(ModelState);
         }
+
         [HttpDelete("DeleteChild/{id}")]
         [Authorize(Roles = "User")]
-        public IActionResult DeleteChild(int id)
+        public async Task<IActionResult> DeleteChild(int id)
         {
-            var child = childrenService.GetChildById(id);
+            var child = await _childrenService.GetChildById(id);
             if (child is null)
-                return BadRequest(new APIResponse { Message = "Invalid Id !!", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "Invalid child ID.", StatusCode = 400 });
 
-            childrenService.DeleteChild(child);
+            await _childrenService.DeleteChild(child);
 
             return Ok(new APIResponse { Message = "Child deleted.", StatusCode = 200 });
         }
+
         [HttpPatch("UpdateChildReadingAndWritingDetails/{id}")]
         [Authorize(Roles = "User,Specialist")]
-        public IActionResult UpdateChildReadingAndWritingDetails([FromBody] JsonPatchDocument<Child> data, int id)
+        public async Task<IActionResult> UpdateChildReadingAndWritingDetails([FromBody] JsonPatchDocument<Child> data, int id)
         {
             if (ModelState.IsValid)
             {
-                var child = childrenService.GetChildById(id);
+                var child = await _childrenService.GetChildById(id);
 
                 if (child != null)
                 {
                     data.ApplyTo(child);
-                    childrenService.SaveChanges();
+                    await _childrenService.SaveChanges();
                     return Ok(child);
                 }
                 else
-                    return NotFound(new APIResponse { Message = "Invalid child id.", StatusCode = 404 });
+                    return NotFound(new APIResponse { Message = "Invalid child ID.", StatusCode = 404 });
             }
             else
                 return BadRequest(ModelState);

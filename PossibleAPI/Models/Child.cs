@@ -20,6 +20,6 @@ namespace GP_API.Models
         public string ParentId { get; set; }
         [ForeignKey(nameof(ParentId))]
         public AppUser? Parent { get; set; }
-        public List<TestChildren>? TestChildrens { get; set; }
+        public List<TestChildren>? TestChildren { get; set; }
     }
 }

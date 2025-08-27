@@ -102,21 +102,11 @@ namespace GP_API.Migrations
                     b.Property<int>("Age")
                         .HasColumnType("int");
 
-                    b.Property<string>("Difficult")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("Gender")
                         .HasColumnType("int");
 
                     b.Property<string>("Image")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastReadingTime")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastWritingTime")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
@@ -127,23 +117,11 @@ namespace GP_API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("ReadingDays")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ReadingRate")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("WritingDays")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("WritingRate")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("Children");
+                    b.ToTable("Children", (string)null);
                 });
 
             modelBuilder.Entity("GP_API.Models.Question", b =>
@@ -173,7 +151,7 @@ namespace GP_API.Migrations
 
                     b.HasIndex("TestId");
 
-                    b.ToTable("Questions");
+                    b.ToTable("Questions", (string)null);
                 });
 
             modelBuilder.Entity("GP_API.Models.Test", b =>
@@ -197,7 +175,7 @@ namespace GP_API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tests");
+                    b.ToTable("Tests", (string)null);
                 });
 
             modelBuilder.Entity("GP_API.Models.TestChildren", b =>
@@ -212,7 +190,7 @@ namespace GP_API.Migrations
 
                     b.HasIndex("ChildId");
 
-                    b.ToTable("TestChildrens");
+                    b.ToTable("TestChildrens", (string)null);
                 });
 
             modelBuilder.Entity("GP_API.Models.UserToken", b =>
@@ -236,7 +214,7 @@ namespace GP_API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tokens");
+                    b.ToTable("Tokens", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

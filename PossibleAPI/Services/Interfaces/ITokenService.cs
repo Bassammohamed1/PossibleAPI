@@ -2,6 +2,6 @@
 {
     public interface ITokenService
     {
-        void InvalidateToken(string userId);
+        Task InvalidateToken(string userId);
     }
 }

@@ -5,11 +5,7 @@ using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GP_API.Controllers
 {
@@ -37,9 +33,9 @@ namespace GP_API.Controllers
                 var result = await _authService.Register(data);
 
                 if (result.StatusCode == 200)
-                    return Ok(new APIResponse { Message = "User updated.", StatusCode = 200 });
+                    return Ok(new APIResponse { Message = "User registered.", StatusCode = 200 });
 
-                return BadRequest(new APIResponse { Message = result.Message, StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = result.Message, StatusCode = 400 });
             }
 
             return BadRequest(ModelState);
@@ -49,22 +45,22 @@ namespace GP_API.Controllers
         [Authorize(Roles = "User")]
         public async Task<IActionResult> UpdateUser([FromForm] UserDTO data)
         {
-            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
-                return BadRequest(new APIResponse { Message = "Invalid token.", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "Invalid token.", StatusCode = 400 });
 
             var user = await _userManager.FindByIdAsync(userId);
 
             if (user == null)
-                return BadRequest(new APIResponse { Message = "User not found.", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "User not found.", StatusCode = 400 });
 
             var result = await _authService.Update(user, data);
 
             if (result.StatusCode == 200)
                 return Ok(new APIResponse { Message = "User updated.", StatusCode = 200 });
 
-            return BadRequest(new APIResponse { Message = result.Message, StatusCode = 404 });
+            return BadRequest(new APIResponse { Message = result.Message, StatusCode = 400 });
         }
 
         [HttpPost("Login")]
@@ -76,9 +72,9 @@ namespace GP_API.Controllers
                 var result = await _authService.Login(user);
 
                 if (result.StatusCode == 200)
-                    return Ok(new APIResponse { Message = "User updated.", StatusCode = 200 });
+                    return Ok(new APIResponse { Message = "User logged in.", StatusCode = 200 });
 
-                return BadRequest(new APIResponse { Message = result.Message, StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = result.Message, StatusCode = 400 });
             }
             return BadRequest(ModelState);
         }
@@ -88,7 +84,11 @@ namespace GP_API.Controllers
         public async Task<IActionResult> Logout()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            _tokenService.InvalidateToken(userId);
+
+            if (string.IsNullOrEmpty(userId))
+                return BadRequest(new APIResponse { Message = "Can't find userID.", StatusCode = 400 });
+
+            await _tokenService.InvalidateToken(userId);
 
             return Ok(new APIResponse { Message = "Logged out successfully.", StatusCode = 200 });
         }
@@ -100,11 +100,12 @@ namespace GP_API.Controllers
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userId))
-                return BadRequest(new APIResponse { Message = "Invalid token.", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "Invalid token.", StatusCode = 400 });
 
             var user = await _userManager.FindByIdAsync(userId);
+
             if (user == null)
-                return BadRequest(new APIResponse { Message = "User not found.", StatusCode = 404 });
+                return BadRequest(new APIResponse { Message = "User not found.", StatusCode = 400 });
 
             var userRoles = await _userManager.GetRolesAsync(user);
 

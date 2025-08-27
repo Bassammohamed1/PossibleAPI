@@ -1,5 +1,6 @@
 ﻿using GP_API.Data;
 using GP_API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace GP_API.Services
 {
@@ -11,13 +12,15 @@ namespace GP_API.Services
         {
             _context = context;
         }
-        public void InvalidateToken(string userId)
+
+        public async Task InvalidateToken(string userId)
         {
-            var token = _context.Tokens.FirstOrDefault(t => t.UserId == userId);
+            var token = await _context.Tokens.FirstOrDefaultAsync(t => t.UserId == userId);
+
             if (token != null)
             {
                 _context.Tokens.Remove(token);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
         }
     }

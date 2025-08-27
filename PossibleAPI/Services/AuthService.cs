@@ -1,5 +1,4 @@
-﻿using Azure.Core;
-using GP_API.Data;
+﻿using GP_API.Data;
 using GP_API.Models;
 using GP_API.Models.DTOs;
 using GP_API.Services.Interfaces;
@@ -8,7 +7,6 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace GP_API.Services
 {
@@ -35,7 +33,7 @@ namespace GP_API.Services
 
             if (data.ClientFile == null)
             {
-                return new AuthModel { Message = "Client file is missing.", StatusCode = 404 };
+                return new AuthModel { Message = "Client file is missing.", StatusCode = 400 };
             }
 
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(data.ClientFile.FileName);
@@ -77,7 +75,7 @@ namespace GP_API.Services
                         await _userManager.AddToRoleAsync(user, "Specialist");
                         break;
                     default:
-                        return new AuthModel { StatusCode = 404, Message = "RoleNo must be 1 or 2." };
+                        return new AuthModel { StatusCode = 400, Message = "RoleNo must be 1 or 2." };
                 }
 
                 var userRoles = await _userManager.GetRolesAsync(user);
@@ -106,7 +104,7 @@ namespace GP_API.Services
             }
             else
             {
-                return new AuthModel { StatusCode = 404, Message = string.Join('-', result.Errors) };
+                return new AuthModel { StatusCode = 400, Message = string.Join('-', result.Errors) };
             }
         }
 
@@ -155,7 +153,7 @@ namespace GP_API.Services
 
             if (data.ClientFile == null)
             {
-                return new AuthModel { Message = "Client file is missing", StatusCode = 404 };
+                return new AuthModel { Message = "Client file is missing", StatusCode = 400 };
             }
 
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(data.ClientFile.FileName);
@@ -210,11 +208,11 @@ namespace GP_API.Services
                 Email = data.Email,
                 Image = user.Image,
                 UserName = data.UserName,
-                Roles = userRole
+                Roles = userRoles
             };
         }
 
-        private async Task<string> GenerateToken(AppUser user)
+        public async Task<string> GenerateToken(AppUser user)
         {
             var claims = new List<Claim>();
             claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id));
@@ -229,7 +227,9 @@ namespace GP_API.Services
             }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"]));
+
             var sc = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
             var token = new JwtSecurityToken(
                 claims: claims,
                 issuer: _configuration["JWT:Issuer"],

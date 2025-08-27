@@ -1,5 +1,5 @@
 using GP_API.Data;
-using GP_API.Extentions;
+using GP_API.Extensions;
 using GP_API.Models;
 using GP_API.Services;
 using GP_API.Services.Interfaces;
@@ -12,8 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("MyConnection")));
 builder.Services.AddIdentity<AppUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>();
 
-builder.Services.AddTransient<ITokenService, TokenService>();
-builder.Services.AddTransient<IChildsService, ChildsService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IChildrenService, ChildrenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddControllers().AddNewtonsoftJson();
 

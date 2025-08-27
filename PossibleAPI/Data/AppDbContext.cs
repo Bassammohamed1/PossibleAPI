@@ -12,11 +12,12 @@ namespace GP_API.Data
         {
             builder.Entity<TestChildren>().HasKey(k => new { k.TestId, k.ChildId });
 
-            builder.Entity<TestChildren>().HasOne(c => c.Child).WithMany(c => c.TestChildrens).HasForeignKey(c => c.ChildId);
-            builder.Entity<TestChildren>().HasOne(c => c.Test).WithMany(c => c.TestChildrens).HasForeignKey(c => c.TestId);
+            builder.Entity<TestChildren>().HasOne(c => c.Child).WithMany(c => c.TestChildren).HasForeignKey(c => c.ChildId);
+            builder.Entity<TestChildren>().HasOne(c => c.Test).WithMany(c => c.TestChildren).HasForeignKey(c => c.TestId);
 
             base.OnModelCreating(builder);
         }
+
         public DbSet<UserToken> Tokens { get; set; }
         public DbSet<Child> Children { get; set; }
         public DbSet<Test> Tests { get; set; }
