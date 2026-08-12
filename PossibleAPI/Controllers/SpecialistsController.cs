@@ -1,9 +1,7 @@
-﻿using GP_API.Data;
-using GP_API.Models;
-using GP_API.Models.DTOs;
+﻿using GP_API.DTOs;
+using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GP_API.Controllers
 {
@@ -11,47 +9,20 @@ namespace GP_API.Controllers
     [ApiController]
     public class SpecialistsController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ISpecialistsService _specialistsService;
 
-        public SpecialistsController(AppDbContext context)
+        public SpecialistsController(ISpecialistsService specialistsService)
         {
-            _context = context;
+            _specialistsService = specialistsService;
         }
 
         [HttpGet("GetChildTests/{id}")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> GetChildTests(int id)
         {
-            var testIds = await _context.TestChildren.Where(t => t.ChildId == id).Select(t => t.TestId).Distinct().ToListAsync();
+            var result = await _specialistsService.GetChildTests(id);
 
-            var testData = new List<TestDTO>();
-
-            foreach (var testId in testIds)
-            {
-                var test = await _context.Tests.SingleOrDefaultAsync(t => t.Id == testId);
-
-                if (test != null)
-                {
-                    var questions = await _context.Questions.Where(q => q.TestId == testId).ToListAsync();
-
-                    var testDTO = new TestDTO()
-                    {
-                        TestName = test.Name,
-                        TestCategory = test.Category,
-                        QuestionsNo = test.QuestionNo,
-                        Questions = questions.Select(q => new QuestionDTO
-                        {
-                            QuestionText = q.QuestionText,
-                            QuestionType = q.QuestionType,
-                            QuestionAnswer = q.QuestionAnswer
-                        }).ToList()
-                    };
-
-                    testData.Add(testDTO);
-                }
-            }
-
-            return Ok(testData);
+            return Ok(result);
         }
 
         [HttpPost("CreateTest")]
@@ -64,41 +35,10 @@ namespace GP_API.Controllers
             if (!testDTO.Questions.Any() || !testDTO.ChildrenId.Any())
                 return BadRequest(new APIResponse { Message = "Questions or childrenIDs can't be empty.", StatusCode = 400 });
 
-            var test = new Test()
-            {
-                Name = testDTO.TestName,
-                Category = testDTO.TestCategory,
-                QuestionNo = testDTO.QuestionsNo
-            };
+            var result = await _specialistsService.CreateTest(testDTO);
 
-            await _context.Tests.AddAsync(test);
-            await _context.SaveChangesAsync();
-
-            foreach (var childId in testDTO.ChildrenId)
-            {
-                var data1 = new TestChildren()
-                {
-                    ChildId = childId,
-                    TestId = test.Id
-                };
-                await _context.TestChildren.AddAsync(data1);
-            }
-            await _context.SaveChangesAsync();
-
-            foreach (var question in testDTO.Questions)
-            {
-                var data2 = new Question()
-                {
-                    QuestionText = question.QuestionText,
-                    QuestionType = question.QuestionType,
-                    QuestionAnswer = question.QuestionAnswer,
-                    TestId = test.Id,
-                };
-                await _context.Questions.AddAsync(data2);
-            }
-            await _context.SaveChangesAsync();
-
-            return Ok(new APIResponse { Message = "Test has been created successfully.", StatusCode = 200 });
+            return result.StatusCode == 200 ? Ok(new APIResponse { Message = "Test has been created successfully.", StatusCode = 200 }) :
+                BadRequest(new APIResponse { Message = result.Message, StatusCode = result.StatusCode });
         }
     }
 }

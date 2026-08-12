@@ -1,8 +1,9 @@
 ﻿
 using FakeItEasy;
 using GP_API.Controllers;
+using GP_API.DTOs;
+using GP_API.Helpers;
 using GP_API.Models;
-using GP_API.Models.DTOs;
 using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -224,7 +225,7 @@ namespace PossibleAPITests
                 .Returns(new AppUser());
 
             A.CallTo(() => childrenService.GetChildrenByParentId(A<string>.Ignored))
-                .Returns(Task.FromResult<List<Child>?>(null));
+                .Returns(Task.FromResult<IEnumerable<Child>?>(null));
 
             sut.ControllerContext = new ControllerContext()
             {
@@ -326,7 +327,7 @@ namespace PossibleAPITests
             var sut = new ChildrenController(childrenService, userManager);
 
             A.CallTo(() => childrenService.AddChild(A<ChildDTO>.Ignored))
-                .Returns(new DbOperationModel { StatusCode = 400, Message = "There is an error." });
+                .Returns(new Result { StatusCode = 400, Message = "There is an error." });
 
             //act
             var result = await sut.AddChild(null);
@@ -353,7 +354,7 @@ namespace PossibleAPITests
             var sut = new ChildrenController(childrenService, userManager);
 
             A.CallTo(() => childrenService.AddChild(A<ChildDTO>.Ignored))
-                .Returns(new DbOperationModel { StatusCode = 200, Child = new Child() });
+                .Returns(new Result { StatusCode = 200, Entity = new Child() });
 
             //act
             var result = await sut.AddChild(new ChildDTO());
@@ -426,7 +427,7 @@ namespace PossibleAPITests
                 .Returns(new Child());
 
             A.CallTo(() => childrenService.UpdateChild(A<Child>.Ignored, A<ChildDTO>.Ignored))
-                .Returns(new DbOperationModel { StatusCode = 400, Message = "There is an error." });
+                .Returns(new Result { StatusCode = 400, Message = "There is an error." });
 
             //act
             var result = await sut.UpdateChild(54, new ChildDTO());
@@ -456,7 +457,7 @@ namespace PossibleAPITests
                 .Returns(new Child());
 
             A.CallTo(() => childrenService.UpdateChild(A<Child>.Ignored, A<ChildDTO>.Ignored))
-                .Returns(new DbOperationModel { StatusCode = 200, Child = new Child() });
+                .Returns(new Result { StatusCode = 200, Entity = new Child() });
 
             //act
             var result = await sut.UpdateChild(54, new ChildDTO());

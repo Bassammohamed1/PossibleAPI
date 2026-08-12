@@ -167,3 +167,4 @@ E:\My Projects\PossibleAPI\GP-API\obj\Debug\net8.0\refint\Possible.dll
 E:\My Projects\PossibleAPI\GP-API\obj\Debug\net8.0\Possible.pdb
 E:\My Projects\PossibleAPI\GP-API\obj\Debug\net8.0\Possible.genruntimeconfig.cache
 E:\My Projects\PossibleAPI\GP-API\obj\Debug\net8.0\ref\Possible.dll
+E:\My Projects\PossibleAPI\GP-API\obj\Debug\net8.0\swae.build.ex.cache

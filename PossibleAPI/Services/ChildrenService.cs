@@ -1,56 +1,54 @@
-﻿using GP_API.Data;
+﻿using GP_API.DTOs;
+using GP_API.Helpers;
 using GP_API.Models;
-using GP_API.Models.DTOs;
+using GP_API.Repository.Interfaces;
 using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace GP_API.Services
 {
     public class ChildrenService : IChildrenService
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly UserManager<AppUser> _userManager;
         private readonly IWebHostEnvironment _environment;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public ChildrenService(AppDbContext context, UserManager<AppUser> userManager, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor)
+        public ChildrenService(UserManager<AppUser> userManager, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IUnitOfWork unitOfWork)
         {
-            _context = context;
             _userManager = userManager;
             _environment = environment;
             _httpContextAccessor = httpContextAccessor;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<IEnumerable<Child>> GetAllChildren()
         {
-            return await _context.Children.ToListAsync();
+            return await _unitOfWork.Children.GetAll();
         }
 
         public async Task<Child> GetChildById(int id)
         {
-            var child = await _context.Children.FindAsync(id);
-            return child;
+            return await _unitOfWork.Children.Get(id);
         }
 
-        public async Task<List<Child>> GetChildrenByParentId(string id)
+        public async Task<IEnumerable<Child>> GetChildrenByParentId(string id)
         {
-            var children = await _context.Children.Where(x => x.ParentId == id).ToListAsync();
-            return children;
+            return await _unitOfWork.Children.GetParentChildren(id);
         }
 
-        public async Task<DbOperationModel> AddChild(ChildDTO data)
+        public async Task<Result> AddChild(ChildDTO data)
         {
             var parent = await _userManager.FindByNameAsync(data.ParentUserName);
 
             if (parent == null)
-                return new DbOperationModel() { Message = "Invalid parent name !!", StatusCode = 400 };
+                return new Result() { Message = "Invalid parent name !!", StatusCode = 400 };
 
             var webRootPath = _environment.WebRootPath;
 
             if (data.ClientFile == null)
             {
-                return new DbOperationModel() { Message = "Client file is missing", StatusCode = 400 };
+                return new Result() { Message = "Client file is missing", StatusCode = 400 };
             }
 
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(data.ClientFile.FileName);
@@ -67,7 +65,7 @@ namespace GP_API.Services
             }
             catch (Exception ex)
             {
-                return new DbOperationModel() { StatusCode = 500, Message = "Error saving file: " + ex.Message };
+                return new Result() { StatusCode = 500, Message = "Error saving file: " + ex.Message };
             }
 
             var request = _httpContextAccessor.HttpContext.Request;
@@ -82,28 +80,25 @@ namespace GP_API.Services
                 Image = $"{request.Scheme}://{request.Host}/files/uploads/images/{fileName}"
             };
 
-            await _context.AddAsync(child);
-            await _context.SaveChangesAsync();
+            var result = await _unitOfWork.Children.Add(child);
+            await _unitOfWork.Commit();
 
-            return new DbOperationModel()
-            {
-                StatusCode = 200,
-                Child = child
-            };
+            return result is not null ? new Result { StatusCode = 200, Entity = child } :
+              new Result { StatusCode = 400, Message = "An error occured whild adding." };
         }
 
-        public async Task<DbOperationModel> UpdateChild(Child child, ChildDTO data)
+        public async Task<Result> UpdateChild(Child child, ChildDTO data)
         {
             var parent = await _userManager.FindByNameAsync(data.ParentUserName);
 
             if (parent == null)
-                return new DbOperationModel() { Message = "Invalid parent name !!", StatusCode = 400 };
+                return new Result() { Message = "Invalid parent name !!", StatusCode = 400 };
 
             var webRootPath = _environment.WebRootPath;
 
             if (data.ClientFile == null)
             {
-                return new DbOperationModel() { Message = "Client file is missing", StatusCode = 400 };
+                return new Result() { Message = "Client file is missing", StatusCode = 400 };
             }
 
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(data.ClientFile.FileName);
@@ -120,7 +115,7 @@ namespace GP_API.Services
             }
             catch (Exception ex)
             {
-                return new DbOperationModel() { StatusCode = 500, Message = "Error saving file: " + ex.Message };
+                return new Result() { StatusCode = 500, Message = "Error saving file: " + ex.Message };
             }
 
             var request = _httpContextAccessor.HttpContext.Request;
@@ -132,24 +127,28 @@ namespace GP_API.Services
             child.ParentId = parent.Id;
             child.Image = $"{request.Scheme}://{request.Host}/files/uploads/images/{fileName}";
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Commit();
 
-            return new DbOperationModel()
+            return new Result()
             {
                 StatusCode = 200,
-                Child = child
+                Entity = child
             };
         }
 
-        public async Task DeleteChild(Child child)
+        public async Task<Result> DeleteChild(Child child)
         {
-            _context.Children.Remove(child);
-            await _context.SaveChangesAsync();
+            var result = _unitOfWork.Children.Delete(child);
+
+            await _unitOfWork.Commit();
+
+            return result is not null ? new Result { StatusCode = 200, Entity = child } :
+                new Result { StatusCode = 400, Message = "An error occured whild deleting." };
         }
 
         public async Task SaveChanges()
         {
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Commit();
         }
     }
 }

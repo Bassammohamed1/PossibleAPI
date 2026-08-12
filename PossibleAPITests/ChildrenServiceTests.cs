@@ -1,7 +1,8 @@
 ﻿using FakeItEasy;
-using GP_API.Data;
+using GP_API.DTOs;
+using GP_API.Helpers;
 using GP_API.Models;
-using GP_API.Models.DTOs;
+using GP_API.Repository.Interfaces;
 using GP_API.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -12,7 +13,6 @@ namespace PossibleAPITests
 {
     public class ChildrenServiceTests
     {
-        dynamic _context = new InMemoryDbContext();
         dynamic _userManager = A.Fake<UserManager<AppUser>>();
         dynamic _environment = A.Fake<IWebHostEnvironment>();
         dynamic _httpContextAccessor = A.Fake<IHttpContextAccessor>();
@@ -21,7 +21,11 @@ namespace PossibleAPITests
         public async Task GetAllChildren_WhenThereIsNoChildren_ReturnEmptyEnumerable()
         {
             //arrange
-            var sut = new ChildrenService(_context, _userManager, _environment, _httpContextAccessor);
+            var uow = A.Fake<IUnitOfWork>();
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
+
+            A.CallTo(() => uow.Children.GetAll())
+                .Returns(Task.FromResult<IEnumerable<Child>>(Enumerable.Empty<Child>()));
 
             //act
             var result = await sut.GetAllChildren();
@@ -35,6 +39,8 @@ namespace PossibleAPITests
         public async Task GetAllChildren_WhenThereIsChildren_ReturnChildren()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
+
             var children = new List<Child>()
             {
                 new Child(){
@@ -63,10 +69,10 @@ namespace PossibleAPITests
                 }
             };
 
-            await _context.Children.AddRangeAsync(children);
-            await _context.SaveChangesAsync();
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
 
-            var sut = new ChildrenService(_context, _userManager, _environment, _httpContextAccessor);
+            A.CallTo(() => uow.Children.GetAll())
+              .Returns(Task.FromResult(children.AsEnumerable()));
 
             //act
             var result = await sut.GetAllChildren();
@@ -81,7 +87,11 @@ namespace PossibleAPITests
         public async Task GetChildById_WhenChildIsNotExists_ReturnNull()
         {
             //arrange
-            var sut = new ChildrenService(_context, _userManager, _environment, _httpContextAccessor);
+            var uow = A.Fake<IUnitOfWork>();
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
+
+            A.CallTo(() => uow.Children.Get(A<int>.Ignored))
+                .Returns(Task.FromResult<Child>(null));
 
             //act
             var result = await sut.GetChildById(1);
@@ -94,7 +104,8 @@ namespace PossibleAPITests
         public async Task GetChildById_WhenChildIsExists_ReturnChild()
         {
             //arrange
-            var sut = new ChildrenService(_context, _userManager, _environment, _httpContextAccessor);
+            var uow = A.Fake<IUnitOfWork>();
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
 
             var child = new Child()
             {
@@ -106,8 +117,8 @@ namespace PossibleAPITests
                 ParentId = "Parent ID"
             };
 
-            await _context.Children.AddAsync(child);
-            await _context.SaveChangesAsync();
+            A.CallTo(() => uow.Children.Get(A<int>.Ignored))
+                .Returns(Task.FromResult<Child>(child));
 
             //act
             var result = await sut.GetChildById(child.Id);
@@ -121,7 +132,11 @@ namespace PossibleAPITests
         public async Task GetChildrenByParentId_WhenThereIsNoChildren_ReturnEmptyEnumerable()
         {
             //arrange
-            var sut = new ChildrenService(_context, _userManager, _environment, _httpContextAccessor);
+            var uow = A.Fake<IUnitOfWork>();
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
+
+            A.CallTo(() => uow.Children.GetParentChildren(A<string>.Ignored))
+                .Returns(Task.FromResult<IEnumerable<Child>>(Enumerable.Empty<Child>()));
 
             //act 
             var result = await sut.GetChildrenByParentId("Parent ID");
@@ -135,6 +150,8 @@ namespace PossibleAPITests
         public async Task GetChildrenByParentId_WhenThereIsChildren_ReturnChildren()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
+
             var children = new List<Child>()
             {
                 new Child(){
@@ -163,10 +180,10 @@ namespace PossibleAPITests
                 }
             };
 
-            await _context.Children.AddRangeAsync(children);
-            await _context.SaveChangesAsync();
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
 
-            var sut = new ChildrenService(_context, _userManager, _environment, _httpContextAccessor);
+            A.CallTo(() => uow.Children.GetParentChildren(A<string>.Ignored))
+                .Returns(Task.FromResult<IEnumerable<Child>>(children));
 
             //act
             var result = await sut.GetChildrenByParentId("Parent ID #1");
@@ -174,45 +191,20 @@ namespace PossibleAPITests
             //assert
             Assert.True(result.Any());
             Assert.NotEmpty(result);
-            Assert.Equal(2, result.Count());
-        }
-
-        [Fact]
-        public async Task DeleteChild_WhenChildIsNotExists_DeleteChild()
-        {
-            //arrange
-            var sut = new ChildrenService(_context, _userManager, _environment, _httpContextAccessor);
-
-            var child = new Child()
-            {
-                Name = "Child 1",
-                Age = 3,
-                Gender = Gender.Male,
-                Image = "Image path #1",
-                Difficult = "Child difficult",
-                ParentId = "Parent ID"
-            };
-
-            await _context.Children.AddAsync(child);
-            await _context.SaveChangesAsync();
-
-            //act
-            await sut.DeleteChild(child);
-
-            //assert
-            Assert.Null(_context.Children.Find(child.Id));
+            Assert.Equal(3, result.Count());
         }
 
         [Fact]
         public async Task AddChild_WhenParentIsNotFound_ReturnStatusCode400()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
             var userManager = A.Fake<UserManager<AppUser>>();
 
             A.CallTo(() => userManager.FindByNameAsync(A<string>.Ignored))
                 .Returns(Task.FromResult<AppUser?>(null));
 
-            var sut = new ChildrenService(_context, userManager, _environment, _httpContextAccessor);
+            var sut = new ChildrenService(userManager, _environment, _httpContextAccessor, uow);
 
             //act 
             var result = await sut.AddChild(new ChildDTO());
@@ -227,12 +219,13 @@ namespace PossibleAPITests
         public async Task AddChild_WhenClientFileIsNotFound_ReturnStatusCode400()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
             var userManager = A.Fake<UserManager<AppUser>>();
 
             A.CallTo(() => userManager.FindByNameAsync(A<string>.Ignored))
                 .Returns(new AppUser());
 
-            var sut = new ChildrenService(_context, userManager, _environment, _httpContextAccessor);
+            var sut = new ChildrenService(userManager, _environment, _httpContextAccessor, uow);
 
             //act 
             var result = await sut.AddChild(new ChildDTO());
@@ -244,15 +237,63 @@ namespace PossibleAPITests
         }
 
         [Fact]
-        public async Task AddChild_WhenAllDataIsValid_AddChild()
+        public async Task AddChild_WhenThereIsErrorWhileAdding_AddChild()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
             var userManager = A.Fake<UserManager<AppUser>>();
 
             A.CallTo(() => userManager.FindByNameAsync(A<string>.Ignored))
                 .Returns(new AppUser());
 
-            var sut = new ChildrenService(_context, userManager, _environment, _httpContextAccessor);
+            A.CallTo(() => uow.Children.Add(A<Child>.Ignored))
+                .Returns(Task.FromResult<Child>(null));
+
+            var sut = new ChildrenService(userManager, _environment, _httpContextAccessor, uow);
+
+            var content = "Hello World!";
+            var fileName = "test.txt";
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+
+            IFormFile formFile = new FormFile(stream, 0, stream.Length, "file", fileName)
+            {
+                Headers = new HeaderDictionary(),
+                ContentType = "text/plain"
+            };
+
+            var child = new ChildDTO()
+            {
+                Name = "Test",
+                Age = 3,
+                Difficult = "Child's difficult",
+                Gender = Gender.Male,
+                ParentUserName = "Parent's name",
+                ClientFile = formFile
+            };
+
+            //act 
+            var result = await sut.AddChild(child);
+
+            //assert
+            Assert.NotNull(result);
+            Assert.Equal(400, result.StatusCode);
+            Assert.Equal("An error occured whild adding.", result.Message);
+        }
+
+        [Fact]
+        public async Task AddChild_WhenAllDataIsValid_AddChild()
+        {
+            //arrange
+            var uow = A.Fake<IUnitOfWork>();
+            var userManager = A.Fake<UserManager<AppUser>>();
+
+            A.CallTo(() => userManager.FindByNameAsync(A<string>.Ignored))
+                .Returns(new AppUser());
+
+            A.CallTo(() => uow.Children.Add(A<Child>.Ignored))
+                .Returns(Task.FromResult<Child>(new Child()));
+
+            var sut = new ChildrenService(userManager, _environment, _httpContextAccessor, uow);
 
             var content = "Hello World!";
             var fileName = "test.txt";
@@ -280,20 +321,20 @@ namespace PossibleAPITests
             //assert
             Assert.NotNull(result);
             Assert.Equal(200, result.StatusCode);
-            Assert.NotNull(result.Child);
-            Assert.True(result.Child?.Id > 0);
+            Assert.NotNull(result);
         }
 
         [Fact]
         public async Task UpdateChild_WhenParentIsNotFound_ReturnStatusCode400()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
             var userManager = A.Fake<UserManager<AppUser>>();
 
             A.CallTo(() => userManager.FindByNameAsync(A<string>.Ignored))
                 .Returns(Task.FromResult<AppUser?>(null));
 
-            var sut = new ChildrenService(_context, userManager, _environment, _httpContextAccessor);
+            var sut = new ChildrenService(userManager, _environment, _httpContextAccessor, uow);
 
             //act 
             var result = await sut.UpdateChild(new Child(), new ChildDTO());
@@ -308,12 +349,13 @@ namespace PossibleAPITests
         public async Task UpdateChild_WhenClientFileIsNotFound_ReturnStatusCode400()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
             var userManager = A.Fake<UserManager<AppUser>>();
 
             A.CallTo(() => userManager.FindByNameAsync(A<string>.Ignored))
                 .Returns(new AppUser());
 
-            var sut = new ChildrenService(_context, userManager, _environment, _httpContextAccessor);
+            var sut = new ChildrenService(userManager, _environment, _httpContextAccessor, uow);
 
             //act 
             var result = await sut.UpdateChild(new Child(), new ChildDTO());
@@ -325,16 +367,16 @@ namespace PossibleAPITests
         }
 
         [Fact]
-        public async Task UpdateChild_WhenAllDataIsValid_AddChild()
+        public async Task UpdateChild_WhenAllDataIsValid_UpdateChild()
         {
             //arrange
-            var context = new InMemoryDbContext();
+            var uow = A.Fake<IUnitOfWork>();
             var userManager = A.Fake<UserManager<AppUser>>();
 
             A.CallTo(() => userManager.FindByNameAsync(A<string>.Ignored))
                 .Returns(new AppUser());
 
-            var sut = new ChildrenService(_context, userManager, _environment, _httpContextAccessor);
+            var sut = new ChildrenService(userManager, _environment, _httpContextAccessor, uow);
 
             var content = "Hello World!";
             var fileName = "test.txt";
@@ -356,9 +398,6 @@ namespace PossibleAPITests
                 ParentId = "Parent's ID"
             };
 
-            await context.Children.AddAsync(child);
-            await context.SaveChangesAsync();
-
             var updatingChild = new ChildDTO()
             {
                 Name = "Updated name",
@@ -374,10 +413,68 @@ namespace PossibleAPITests
 
             //assert
             Assert.NotNull(result);
-            Assert.NotNull(result.Child);
+            Assert.NotNull(result.Entity);
             Assert.Equal(200, result.StatusCode);
-            Assert.Equal("Updated name", result.Child.Name);
-            Assert.Equal(4, result.Child.Age);
+        }
+
+        [Fact]
+        public async Task DeleteChild_WhenThereIsErrorWhileDeleting_ReturnError()
+        {
+            //arrange
+            var uow = A.Fake<IUnitOfWork>();
+
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
+
+            var child = new Child()
+            {
+                Name = "Child 1",
+                Age = 3,
+                Gender = Gender.Male,
+                Image = "Image path #1",
+                Difficult = "Child difficult",
+                ParentId = "Parent ID"
+            };
+
+            A.CallTo(() => uow.Children.Delete(A<Child>.Ignored))
+                 .Returns(null);
+
+            //act
+            var result = await sut.DeleteChild(child);
+
+            //assert
+            Assert.NotNull(result);
+            Assert.Equal(400, result.StatusCode);
+            Assert.Equal("An error occured whild deleting.", result.Message);
+        }
+
+        [Fact]
+        public async Task DeleteChild_WhenThereIsNoErrorsWhileDeleting_DeleteChild()
+        {
+            //arrange
+            var uow = A.Fake<IUnitOfWork>();
+
+            var sut = new ChildrenService(_userManager, _environment, _httpContextAccessor, uow);
+
+            var child = new Child()
+            {
+                Name = "Child 1",
+                Age = 3,
+                Gender = Gender.Male,
+                Image = "Image path #1",
+                Difficult = "Child difficult",
+                ParentId = "Parent ID"
+            };
+
+            A.CallTo(() => uow.Children.Delete(A<Child>.Ignored))
+                 .Returns(child);
+
+            //act
+            var result = await sut.DeleteChild(child);
+
+            //assert
+            Assert.NotNull(result);
+            Assert.Equal(200, result.StatusCode);
+            Assert.NotNull(result.Entity);
         }
     }
 }

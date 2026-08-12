@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace GP_API.Models.DTOs
+namespace GP_API.DTOs
 {
     public class UserDTO
     {

@@ -1,4 +1,4 @@
-﻿using GP_API.Data;
+﻿using GP_API.Helpers;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GP_API.Models

@@ -1,12 +1,11 @@
-﻿using GP_API.Models;
-using GP_API.Models.DTOs;
+﻿using GP_API.DTOs;
+using GP_API.Models;
 using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace GP_API.Controllers
 {
@@ -28,6 +27,7 @@ namespace GP_API.Controllers
         public async Task<IActionResult> GetAllChildren()
         {
             var children = await _childrenService.GetAllChildren();
+
             return Ok(children);
         }
 
@@ -113,7 +113,7 @@ namespace GP_API.Controllers
 
                 if (result.StatusCode == 200)
                 {
-                    return Ok(result.Child);
+                    return Ok(result.Entity);
                 }
                 else
                 {
@@ -138,7 +138,7 @@ namespace GP_API.Controllers
 
                 if (result.StatusCode == 200)
                 {
-                    return Ok(result.Child);
+                    return Ok(result.Entity);
                 }
                 else
                 {
@@ -156,7 +156,7 @@ namespace GP_API.Controllers
             if (child is null)
                 return BadRequest(new APIResponse { Message = "Invalid child ID.", StatusCode = 400 });
 
-            await _childrenService.DeleteChild(child);
+            _childrenService.DeleteChild(child);
 
             return Ok(new APIResponse { Message = "Child deleted.", StatusCode = 200 });
         }

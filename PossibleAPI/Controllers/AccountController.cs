@@ -1,6 +1,5 @@
-﻿using GP_API.Data;
+﻿using GP_API.DTOs;
 using GP_API.Models;
-using GP_API.Models.DTOs;
 using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;

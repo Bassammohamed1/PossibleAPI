@@ -1,4 +1,4 @@
-﻿namespace GP_API.Data
+﻿namespace GP_API.Helpers
 {
     public enum Gender
     {

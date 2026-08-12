@@ -1,6 +1,6 @@
 ﻿using FakeItEasy;
+using GP_API.DTOs;
 using GP_API.Models;
-using GP_API.Models.DTOs;
 using GP_API.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;

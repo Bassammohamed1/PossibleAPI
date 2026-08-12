@@ -1,6 +1,6 @@
-﻿using GP_API.Data;
+﻿using GP_API.Helpers;
 
-namespace GP_API.Models.DTOs
+namespace GP_API.DTOs
 {
     public class ChildDTO
     {

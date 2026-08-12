@@ -1,5 +1,5 @@
-﻿using GP_API.Models;
-using GP_API.Models.DTOs;
+﻿using GP_API.DTOs;
+using GP_API.Models;
 
 namespace GP_API.Services.Interfaces
 {
