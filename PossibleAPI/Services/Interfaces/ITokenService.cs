@@ -1,7 +1,8 @@
-﻿namespace GP_API.Services.Interfaces
+﻿
+namespace GP_API.Services.Interfaces
 {
     public interface ITokenService
     {
-        Task InvalidateToken(string userId);
+        Task InvalidateToken(string userID);
     }
 }

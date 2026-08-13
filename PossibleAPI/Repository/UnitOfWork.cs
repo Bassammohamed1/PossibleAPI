@@ -15,12 +15,14 @@ namespace GP_API.Repository
             Tests = new Repository<Test>(context);
             Questions = new QuestionsRepository(context);
             TestChildren = new TestChildrenRepository(context);
+            Tokens = new TokensRepository(context);
         }
 
         public IChildrenRepository Children { get; private set; }
         public IRepository<Test> Tests { get; private set; }
         public IQuestionsRepository Questions { get; private set; }
         public ITestChildrenRepoository TestChildren { get; private set; }
+        public ITokensRepository Tokens { get; private set; }
 
         public async Task Commit()
         {

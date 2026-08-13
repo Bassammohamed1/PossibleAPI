@@ -1,6 +1,6 @@
-﻿using GP_API.Data;
-using GP_API.DTOs;
+﻿using GP_API.DTOs;
 using GP_API.Models;
+using GP_API.Repository.Interfaces;
 using GP_API.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -12,15 +12,15 @@ namespace GP_API.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IWebHostEnvironment _environment;
         private readonly UserManager<AppUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AuthService(AppDbContext context, IWebHostEnvironment environment, UserManager<AppUser> userManager, IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
+        public AuthService(IUnitOfWork unitOfWork, IWebHostEnvironment environment, UserManager<AppUser> userManager, IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _environment = environment;
             _userManager = userManager;
             _configuration = configuration;
@@ -97,8 +97,8 @@ namespace GP_API.Services
                     Token = model.Token
                 };
 
-                _context.Tokens.Add(userToken);
-                await _context.SaveChangesAsync();
+                await _unitOfWork.Tokens.Add(userToken);
+                await _unitOfWork.Commit();
 
                 return model;
             }
@@ -135,8 +135,8 @@ namespace GP_API.Services
                         Token = model.Token
                     };
 
-                    _context.Tokens.Add(userToken);
-                    await _context.SaveChangesAsync();
+                    await _unitOfWork.Tokens.Add(userToken);
+                    await _unitOfWork.Commit();
 
                     return model;
                 }

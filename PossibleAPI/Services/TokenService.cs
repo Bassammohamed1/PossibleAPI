@@ -1,26 +1,25 @@
-﻿using GP_API.Data;
+﻿using GP_API.Repository.Interfaces;
 using GP_API.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace GP_API.Services
 {
     public class TokenService : ITokenService
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public TokenService(AppDbContext context)
+        public TokenService(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
-        public async Task InvalidateToken(string userId)
+        public async Task InvalidateToken(string userID)
         {
-            var token = await _context.Tokens.FirstOrDefaultAsync(t => t.UserId == userId);
+            var token = await _unitOfWork.Tokens.GetUserToken(userID);
 
             if (token != null)
             {
-                _context.Tokens.Remove(token);
-                await _context.SaveChangesAsync();
+                _unitOfWork.Tokens.Delete(token);
+                await _unitOfWork.Commit();
             }
         }
     }

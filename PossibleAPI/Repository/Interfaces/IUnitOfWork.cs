@@ -8,6 +8,7 @@ namespace GP_API.Repository.Interfaces
         IRepository<Test> Tests { get; }
         IQuestionsRepository Questions { get; }
         ITestChildrenRepoository TestChildren { get; }
+        ITokensRepository Tokens { get; }
         Task Commit();
     }
 }

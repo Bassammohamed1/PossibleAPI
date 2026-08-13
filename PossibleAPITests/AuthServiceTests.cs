@@ -1,6 +1,7 @@
 ﻿using FakeItEasy;
 using GP_API.DTOs;
 using GP_API.Models;
+using GP_API.Repository.Interfaces;
 using GP_API.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -12,7 +13,6 @@ namespace PossibleAPITests
 {
     public class AuthServiceTests
     {
-        dynamic _context = new InMemoryDbContext();
         dynamic _environment = A.Fake<IWebHostEnvironment>();
         dynamic _userManager = A.Fake<UserManager<AppUser>>();
         dynamic _configuration = A.Fake<IConfiguration>();
@@ -34,7 +34,7 @@ namespace PossibleAPITests
                 .AddInMemoryCollection(inMemorySettings)
                 .Build();
 
-            var sut = new AuthService(_context, _environment, _userManager, configuration, _httpContextAccessor);
+            var sut = new AuthService(null, _environment, _userManager, configuration, _httpContextAccessor);
 
             var user = new AppUser()
             {
@@ -58,7 +58,7 @@ namespace PossibleAPITests
         public async Task Update_WhereClientFileIsMissing_ReturnStatusCode400()
         {
             //arrange
-            var sut = new AuthService(_context, _environment, _userManager, _configuration, _httpContextAccessor);
+            var sut = new AuthService(null, _environment, _userManager, _configuration, _httpContextAccessor);
 
             var user = new AppUser()
             {
@@ -103,7 +103,7 @@ namespace PossibleAPITests
             A.CallTo(() => userManager.UpdateAsync(A<AppUser>.Ignored))
                 .Returns(IdentityResult.Success);
 
-            var sut = new AuthService(_context, _environment, userManager, _configuration, _httpContextAccessor);
+            var sut = new AuthService(null, _environment, userManager, _configuration, _httpContextAccessor);
 
             await _userManager.CreateAsync(user, "123456");
 
@@ -140,7 +140,7 @@ namespace PossibleAPITests
         public async Task Login_WhereUserDoesNotFound_ReturnStatusCode401()
         {
             //arrange
-            var sut = new AuthService(_context, _environment, _userManager, _configuration, _httpContextAccessor);
+            var sut = new AuthService(null, _environment, _userManager, _configuration, _httpContextAccessor);
 
             //act
             var result = await sut.Login(new LoginDTO() { Email = "Test@mail.com", Password = "123456" });
@@ -155,7 +155,7 @@ namespace PossibleAPITests
         public async Task Login_WherePasswordIsIncorrect_ReturnStatusCode401()
         {
             //arrange
-            var sut = new AuthService(_context, _environment, _userManager, _configuration, _httpContextAccessor);
+            var sut = new AuthService(null, _environment, _userManager, _configuration, _httpContextAccessor);
 
             var user = new AppUser()
             {
@@ -181,6 +181,8 @@ namespace PossibleAPITests
         public async Task Login_WhereUserFoundAndPasswordCorrect_LoginSuccessfully()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
+
             var inMemorySettings = new Dictionary<string, string>
             {
 
@@ -215,7 +217,7 @@ namespace PossibleAPITests
             A.CallTo(() => userManager.GetRolesAsync(user))
             .Returns(new List<string>() { "User" });
 
-            var sut = new AuthService(_context, _environment, userManager, configuration, _httpContextAccessor);
+            var sut = new AuthService(uow, _environment, userManager, configuration, _httpContextAccessor);
 
             //act
             var result = await sut.Login(new LoginDTO() { Email = "Test@mail.com", Password = "123456" });
@@ -230,7 +232,7 @@ namespace PossibleAPITests
         public async Task Register_WhereClientFileIsMissing_ReturnStatusCode400()
         {
             //arrange
-            var sut = new AuthService(_context, _environment, _userManager, _configuration, _httpContextAccessor);
+            var sut = new AuthService(null, _environment, _userManager, _configuration, _httpContextAccessor);
 
             var data = new UserDTO()
             {
@@ -255,7 +257,7 @@ namespace PossibleAPITests
             //arrange
             var userManager = A.Fake<UserManager<AppUser>>();
 
-            var sut = new AuthService(_context, _environment, userManager, _configuration, _httpContextAccessor);
+            var sut = new AuthService(null, _environment, userManager, _configuration, _httpContextAccessor);
 
             var content = "Hello World!";
             var fileName = "test.txt";
@@ -292,6 +294,8 @@ namespace PossibleAPITests
         public async Task Register_WhereDataIsValid_RegisterSuccessfully()
         {
             //arrange
+            var uow = A.Fake<IUnitOfWork>();
+
             var inMemorySettings = new Dictionary<string, string>
             {
 
@@ -306,7 +310,7 @@ namespace PossibleAPITests
 
             var userManager = A.Fake<UserManager<AppUser>>();
 
-            var sut = new AuthService(_context, _environment, userManager, configuration, _httpContextAccessor);
+            var sut = new AuthService(uow, _environment, userManager, configuration, _httpContextAccessor);
 
             var content = "Hello World!";
             var fileName = "test.txt";
