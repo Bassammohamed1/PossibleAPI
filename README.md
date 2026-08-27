@@ -15,10 +15,11 @@ Built with **ASP.NET Core** and **SignalR**, it provides real-time communication
 
 ---
 
-## 🧪 Testing
-- **Unit Testing** with xUnit to validate core functionality.  
-- **In-Memory DB** for safe, isolated test scenarios.  
-- **FakeItEasy** for mocking dependencies in test environments.  
+## 🧪 Testing & Quality Assurance
+- **AAA** (Arrange–Act–Assert) pattern.
+- **xUnit** unit tests for core features.
+- **InMemory Database** for safe DB testing.
+- **FakeItEasy** for mocking dependencies. 
 
 ---
 
